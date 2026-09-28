@@ -581,8 +581,12 @@ MenuReturnStatus ShowMenu(char* rom_path, char* save_path_template, SDL_Surface*
 	
 	SDL_Event event;
 	int is_dirty = 1;
-	int is_start_pressed = 0;
 	int is_select_pressed = 0;
+	int is_start_pressed = 0;
+	int is_up_pressed = 0;
+	int is_down_pressed = 0;
+	int is_left_pressed = 0;
+	int is_right_pressed = 0;
 	int show_setting = 0; // 1=brightness,2=volume
 	int setting_value = 0;
 	int setting_max = 0;
@@ -599,8 +603,12 @@ MenuReturnStatus ShowMenu(char* rom_path, char* save_path_template, SDL_Surface*
 			switch( event.type ){
 				case SDL_KEYUP: {
 					SDLKey key = event.key.keysym.sym;
-					if (key==TRIMUI_START) is_start_pressed = 0;
-					else if (key==TRIMUI_SELECT) is_select_pressed = 0;
+
+					if (key==TRIMUI_SELECT) is_select_pressed = 0;
+					else if (key==TRIMUI_UP) is_up_pressed = 0;
+					else if (key==TRIMUI_DOWN) is_down_pressed = 0;
+					else if (key==TRIMUI_LEFT) is_left_pressed = 0;
+					else if (key==TRIMUI_RIGHT) is_right_pressed = 0;
 					
 					if (acted && keyEvent==kMenuEventKeyUp) {
 						cancel_start = frame_start;
@@ -613,49 +621,55 @@ MenuReturnStatus ShowMenu(char* rom_path, char* save_path_template, SDL_Surface*
 					if (acted) break;
 					SDLKey key = event.key.keysym.sym;
 					cancel_start = frame_start;
-					if (key==TRIMUI_UP) {
-						selected -= 1;
-						if (selected<0) selected += kItemCount;
-						is_dirty = 1;
-					}
-					else if (key==TRIMUI_DOWN) {
-						selected += 1;
-						if (selected==kItemCount) selected -= kItemCount;
-						is_dirty = 1;
-					}
-					else if (key==TRIMUI_LEFT) {
-						if (total_discs && selected==kItemContinue) {
-							disc -= 1;
-							if (disc<0) disc += total_discs;
-							is_dirty = 1;
-							sprintf(disc_name, "Disc %i", disc+1);
-						}
-						else if (selected==kItemSave || selected==kItemLoad) {
-	 						slot -= 1;
-							if (slot<0) slot += kSlotCount;
+					if (key==TRIMUI_SELECT) is_select_pressed = 1;
+					else if (key==TRIMUI_UP) is_up_pressed = 1;
+					else if (key==TRIMUI_DOWN) is_down_pressed = 1;
+					else if (key==TRIMUI_LEFT) is_left_pressed = 1;
+					else if (key==TRIMUI_RIGHT) is_right_pressed = 1;
+
+					if (!is_select_pressed) {
+						if (key==TRIMUI_UP) {
+							selected -= 1;
+							if (selected<0) selected += kItemCount;
 							is_dirty = 1;
 						}
-					}
-					else if (key==TRIMUI_RIGHT) {
-						if (total_discs && selected==kItemContinue) {
-							disc += 1;
-							if (disc==total_discs) disc -= total_discs;
-							is_dirty = 1;
-							sprintf(disc_name, "Disc %i", disc+1);
-						}
-						else if (selected==kItemSave || selected==kItemLoad) {
-							slot += 1;
-							if (slot==kSlotCount) slot -= kSlotCount;
+						else if (key==TRIMUI_DOWN) {
+							selected += 1;
+							if (selected==kItemCount) selected -= kItemCount;
 							is_dirty = 1;
 						}
-					}
-					else if (key==TRIMUI_START) is_start_pressed = 1;
-					else if (key==TRIMUI_SELECT) is_select_pressed = 1;
-					
-					if (!supports_save_load) {
-						// NOTE: should not be able to reach save load at this point
-						if (selected==kItemSave && key==TRIMUI_DOWN) selected += 2;
-						else if (selected==kItemLoad && key==TRIMUI_UP) selected -= 2;
+						else if (key==TRIMUI_LEFT) {
+							if (total_discs && selected==kItemContinue) {
+								disc -= 1;
+								if (disc<0) disc += total_discs;
+								is_dirty = 1;
+								sprintf(disc_name, "Disc %i", disc+1);
+							}
+							else if (selected==kItemSave || selected==kItemLoad) {
+								slot -= 1;
+								if (slot<0) slot += kSlotCount;
+								is_dirty = 1;
+							}
+						}
+						else if (key==TRIMUI_RIGHT) {
+							if (total_discs && selected==kItemContinue) {
+								disc += 1;
+								if (disc==total_discs) disc -= total_discs;
+								is_dirty = 1;
+								sprintf(disc_name, "Disc %i", disc+1);
+							}
+							else if (selected==kItemSave || selected==kItemLoad) {
+								slot += 1;
+								if (slot==kSlotCount) slot -= kSlotCount;
+								is_dirty = 1;
+							}
+						}
+
+						if (!supports_save_load) {
+							// NOTE: should not be able to reach save load at this point
+							if (selected==kItemSave && key==TRIMUI_DOWN) selected += 2;
+							else if (selected==kItemLoad && key==TRIMUI_UP) selected -= 2;
+						}
 					}
 					
 					if (enable_screenshots) {
@@ -750,22 +764,29 @@ MenuReturnStatus ShowMenu(char* rom_path, char* save_path_template, SDL_Surface*
 		
 		int old_setting = show_setting;
 		int old_value = setting_value;
-		show_setting = 0;
-		if (is_start_pressed && is_select_pressed) {
-			// buh
+
+		if (!is_select_pressed) {
+			show_setting = 0;
 		}
-		else if (is_start_pressed) {
+		else if (is_left_pressed || is_right_pressed) {
 			show_setting = 1;
 			setting_value = GetBrightness();
 			setting_max = 10;
 			// printf("show brightness: %i\n", setting_value, setting_max);
 		}
-		else if (is_select_pressed) {
+		else if (is_up_pressed || is_down_pressed) {
 			show_setting = 2;
 			setting_value = GetVolume();
 			setting_max = 20;
 			// printf("show volume: %i\n", setting_value, setting_max);
 		}
+		else if (show_setting == 1) {
+			setting_value = GetBrightness();
+		}
+		else if (show_setting == 2) {
+			setting_value = GetVolume();
+		}
+
 		if (old_setting!=show_setting || old_value!=setting_value) is_dirty = 1;
 		
 		if (is_dirty) {
