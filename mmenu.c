@@ -14,6 +14,9 @@
 #include <msettings.h>
 #include "mmenu.h"
 
+#include <time.h>
+#include <unistd.h>
+
 #define TRIMUI_UP 		SDLK_UP
 #define TRIMUI_DOWN 	SDLK_DOWN
 #define TRIMUI_LEFT 	SDLK_LEFT
@@ -103,6 +106,15 @@ static int exists(char* path) {
 	return access(path, F_OK)==0;
 }
 
+static void saveFakeRtc(void) {
+	FILE* file = fopen("/mnt/SDCARD/.minui/fake-rtc", "w");
+	if (!file) return;
+
+	fprintf(file, "%ld\n", (long)time(NULL));
+	fclose(file);
+	sync();
+}
+
 ///////////////////////////////////////
 
 static int getBatteryLevel(void) {
@@ -182,6 +194,7 @@ static void initLCD(void) {
 }
 
 static void fauxSleep(void) {
+	saveFakeRtc();
 	SetRawVolume(0);
 	SetRawBrightness(0);
 	setCPU(kCPUDead);
@@ -211,6 +224,8 @@ static void fauxSleep(void) {
 			}
 		}
 	}
+
+	saveFakeRtc();
 	
 	system("killall -s CONT keymon");
 
